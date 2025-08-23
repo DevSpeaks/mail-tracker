@@ -1,0 +1,7 @@
+services:
+  mailtracker:
+    image: mailtracker
+    container_name: mailtracker
+    ports:
+      - "3300:3300"
+    restart: always

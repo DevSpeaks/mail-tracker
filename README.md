@@ -23,6 +23,29 @@ A simple Node.js + Express + EJS + SQLite application that generates and serves 
 
 ## Installation
 
+### Run with docker
+
+1. **Clone the repository** (or download the ZIP):
+
+    ```bash
+    git clone https://github.com/DevSpeaks/mail-tracker.git
+    cd mail-tracker
+    ```
+
+2. **Build image**:
+
+    ```bash
+    docker build -t mailtracker .
+    ```
+
+3. **Run the container**:
+
+    ```bash
+    docker-compose up -d
+    ```
+
+### Run locally
+
 1. **Clone the repository** (or download the ZIP):
    ```bash
    git clone https://github.com/DevSpeaks/mail-tracker.git
