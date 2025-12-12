@@ -105,6 +105,19 @@ public/
 4. Push to the branch (`git push origin feature/my-new-feature`)  
 5. Create a new Pull Request
 
+## Open Rate Accuracy and Limitations
+
+Email open tracking is based on image load events. Modern email clients such as Gmail, Apple Mail, and Outlook often proxy, cache, or prefetch images for privacy and security reasons. Because of this behavior, open tracking should be treated as an estimated metric rather than a guaranteed indication that a human viewed the email.
+
+**Improves the quality of open tracking data by:**
+   1. Comparing email sent timestamps with first image request timestamps
+   2. Deduplicating multiple image requests for the same tracking pixel
+   3. Using historical traffic patterns to classify proxy and automated image loads
+
+These techniques help reduce noise and improve the directional accuracy of open rate metrics. However, they cannot reliably distinguish between automated image loads and real human opens in all cases, especially when image proxying is involved.
+
+For more reliable engagement measurement, click tracking and other user initiated actions should be used alongside open tracking.
+
 ## License
 
 [MIT](LICENSE) © 2024 
