@@ -1,116 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Mail Tracker - Logs</title>
+    <title>Logs — <%= pixel.name %></title>
     <meta charset="UTF-8" />
-    <style>
-      body {
-        font-family: sans-serif;
-        margin: 20px;
-      }
-      .container {
-        max-width: 900px;
-        margin: auto;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-      }
-      th,
-      td {
-        padding: 8px;
-        border: 1px solid #ccc;
-        vertical-align: top;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/css/style.css" />
   </head>
 
   <body>
     <div class="container">
-      <h1>Logs for <%= pixel.name %></h1>
+      <a href="/" class="back-link">← Back to Dashboard</a>
 
-      <% 
-        // 1) Date/time formatting for both "Created At" and each log
+      <div class="header">
+        <h1>📊 <%= pixel.name %></h1>
+        <span class="header-badge">Pixel Logs</span>
+      </div>
+
+      <%
         const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
         function formatDateTime(isoString) {
           const d = new Date(isoString);
-          let day  = d.getDate();
-          let mon  = months[d.getMonth()];
-          let year = d.getFullYear();
-
-          let hours   = d.getHours();
-          let minutes = d.getMinutes();
-          let seconds = d.getSeconds();
-
-          let ampm = (hours >= 12) ? "pm" : "am";
-          // convert 0-23 -> 1-12
-          hours = (hours === 0) ? 12 : (hours > 12 ? hours - 12 : hours);
-
           const pad = (num) => num.toString().padStart(2, "0");
-          return `${pad(day)}-${mon}-${year} ${pad(hours)}:${pad(minutes)}:${pad(seconds)}${ampm}`;
+          const day = pad(d.getDate());
+          const mon = months[d.getMonth()];
+          const year = d.getFullYear();
+          let hours = d.getHours();
+          const minutes = pad(d.getMinutes());
+          const seconds = pad(d.getSeconds());
+          const ampm = hours >= 12 ? "pm" : "am";
+          hours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+          return `${day} ${mon} ${year} ${pad(hours)}:${minutes}:${seconds}${ampm}`;
         }
 
-        // Convert "Created At" to local time
-        const createdLocal = formatDateTime(pixel.createdAt);
+        const totalOpens = logs.length;
+        const firstOpen = totalOpens > 0 ? formatDateTime(logs[logs.length - 1].time) : '—';
+        const lastOpen = totalOpens > 0 ? formatDateTime(logs[0].time) : '—';
+
+        function isBot(userAgent) {
+          const botPatterns = /googleimageproxy|ggpht\.com|outlook|microsoft|yahoo.*slurp|bot|crawler|spider|prefetch/i;
+          return botPatterns.test(userAgent);
+        }
+
+        const groupClasses = ['log-group-a', 'log-group-b', 'log-group-c', 'log-group-d', 'log-group-e', 'log-group-f'];
       %>
 
-      <p><strong>Pixel ID:</strong> <%= pixel.id %></p>
-      <p><strong>Created At:</strong> <%= createdLocal %></p>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value"><%= totalOpens %></div>
+          <div class="stat-label">Total Opens</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value"><%= uniqueIps %></div>
+          <div class="stat-label">Unique IPs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="font-size:1rem; margin-top:0.45rem"><%= firstOpen %></div>
+          <div class="stat-label">First Open</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="font-size:1rem; margin-top:0.45rem"><%= lastOpen %></div>
+          <div class="stat-label">Last Open</div>
+        </div>
+      </div>
 
-      <h2>Open Events</h2>
-      <p style="font-style: italic; margin-bottom: 1em;">
-        You may see extra logs if bots (for example, GoogleImageProxy via `ggpht.com`) or the email client repeatedly load the image. Check each log’s timestamp to determine whether it’s a genuine user open or just a proxy/bot fetching the image again.
-      </p>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <% if (totalOpens === 0) { %>
+          <div class="empty-state">
+            <div class="empty-state-icon">👀</div>
+            <p>No opens recorded yet. The pixel will log events once the email is opened.</p>
+          </div>
+        <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:200px">Time</th>
+                  <th style="width:140px">IP Address</th>
+                  <th>User Agent</th>
+                </tr>
+              </thead>
+              <tbody>
+                <%
+                  const sortedLogs = logs.slice().reverse();
+                  let colorIndex = 0;
+                  let lastTime = null;
 
-      <%
-        // 2) Color-grouping logic for logs under 2-second intervals
-        const rowColors = ["#ffeeee", "#eeffee", "#eeeeff", "#fff0f0", "#f0fff0", "#f0f0ff"];
-        let colorIndex = 0;
-        let lastTime = null; // numeric timestamp in ms
-      %>
+                  sortedLogs.forEach((log) => {
+                    const currentTime = new Date(log.time).getTime();
+                    if (lastTime !== null && (currentTime - lastTime) > 2000) {
+                      colorIndex = (colorIndex + 1) % groupClasses.length;
+                    }
+                    lastTime = currentTime;
 
-      <table>
-        <colgroup>
-          <col style="width: 220px;" />
-          <col style="width: 160px;" />
-          <col style="width: auto;" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>IP</th>
-            <th>User-Agent</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% 
-          // If logs come from DB newest-first, reverse to process oldest->newest
-          const sortedLogs = logs.slice().reverse();
+                    const formatted = formatDateTime(log.time);
+                    const isBotRequest = isBot(log.userAgent);
+                %>
+                  <tr class="<%= groupClasses[colorIndex] %>">
+                    <td class="mono"><%= formatted %></td>
+                    <td class="mono"><%= log.ip %></td>
+                    <td>
+                      <%= log.userAgent %>
+                      <% if (isBotRequest) { %><span class="bot-tag">BOT</span><% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
 
-          sortedLogs.forEach((log) => {
-            const currentTime = new Date(log.time).getTime();
-
-            if (lastTime !== null) {
-              const diff = currentTime - lastTime; // ms
-              if (diff > 2000) {
-                colorIndex = (colorIndex + 1) % rowColors.length;
-              }
-            }
-            lastTime = currentTime;
-
-            const formatted = formatDateTime(log.time);
-            const rowColor = rowColors[colorIndex];
-          %>
-            <tr style="background-color: <%= rowColor %>;">
-              <td><%= formatted %></td>
-              <td><%= log.ip %></td>
-              <td><%= log.userAgent %></td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
-
-      <p><a href="/">← Back to Dashboard</a></p>
+      <div class="card" style="margin-top: 1rem;">
+        <div class="card-title">Pixel Details</div>
+        <div class="pixel-meta" style="flex-direction:column; gap:0.3rem;">
+          <span><strong style="color:var(--text-primary)">ID:</strong> <code style="color:var(--text-muted); font-size:0.8rem"><%= pixel.id %></code></span>
+          <span><strong style="color:var(--text-primary)">Created:</strong> <%= formatDateTime(pixel.createdAt) %></span>
+        </div>
+      </div>
     </div>
   </body>
 </html>

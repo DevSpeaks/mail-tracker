@@ -1,112 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Mail Tracker - Dashboard</title>
+    <title>Mail Tracker</title>
     <meta charset="UTF-8" />
-    <style>
-      body {
-        font-family: sans-serif;
-        margin: 20px;
-      }
-      .container {
-        max-width: 800px;
-        margin: auto;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-      }
-      th,
-      td {
-        padding: 8px;
-        border: 1px solid #ccc;
-      }
-      .small {
-        font-size: 0.9em;
-        color: #666;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/css/style.css" />
   </head>
 
   <body>
     <div class="container">
-      <h1>Mail Tracker - Dashboard</h1>
+      <div class="header">
+        <h1>📧 <span>Mail</span> Tracker</h1>
+        <span class="header-badge"><%= pixels.length %> pixel<%= pixels.length !== 1 ? 's' : '' %></span>
+      </div>
 
-      <h2>Create a New Tracking Pixel</h2>
-      <form action="/create" method="POST">
-        <label for="name">Pixel Name (optional): </label>
-        <input type="text" id="name" name="name" />
-        <button type="submit">Create Pixel</button>
-      </form>
+      <div class="card">
+        <div class="card-title">Create a New Tracking Pixel</div>
+        <form action="/create" method="POST">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Pixel Name</label>
+              <input type="text" id="name" name="name" placeholder="e.g. Invoice to Acme Corp" />
+            </div>
+            <button type="submit" class="btn btn-primary">+ Create Pixel</button>
+          </div>
+        </form>
+      </div>
 
-      <hr />
-
-      <h2>Existing Pixels</h2>
       <% if (pixels.length === 0) { %>
-        <p>No pixels created yet.</p>
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>No tracking pixels yet. Create one above to get started.</p>
+          </div>
+        </div>
       <% } else { %>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Created</th>
-              <th>Tracker URL</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% 
-            // Optionally format creation time
-            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-            function formatDate(isoString) {
-              const d = new Date(isoString);
-              let day = d.getDate();
-              let mon = months[d.getMonth()];
-              let year = d.getFullYear();
-
-              let hours = d.getHours();
-              let minutes = d.getMinutes();
-              let seconds = d.getSeconds();
-
-              let ampm = (hours >= 12) ? "pm" : "am";
-              hours = (hours === 0) ? 12 : (hours > 12 ? hours - 12 : hours);
-
-              const pad = (num) => num.toString().padStart(2, "0");
-              // e.g. "01-Mar-2024 05:03:07pm"
-              return `${pad(day)}-${mon}-${year} ${pad(hours)}:${pad(minutes)}:${pad(seconds)}${ampm}`;
-            }
-
-            pixels.forEach(pixel => { 
-            %>
-              <tr>
-                <td><%= pixel.name %></td>
-                <td><%= formatDate(pixel.createdAt) %></td>
-                <td>
-                  <input
-                    type="text"
-                    value="<%= baseUrl + '/tracker/' + pixel.id + '.png' %>"
-                    readonly
-                    size="50"
-                  />
-                </td>
-                <td>
-                  <a href="/logs/<%= pixel.id %>">View Logs</a>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+        <%
+          const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+          function formatDate(isoString) {
+            const d = new Date(isoString);
+            const pad = (num) => num.toString().padStart(2, "0");
+            const day = pad(d.getDate());
+            const mon = months[d.getMonth()];
+            const year = d.getFullYear();
+            let hours = d.getHours();
+            const ampm = hours >= 12 ? "pm" : "am";
+            hours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+            return `${day} ${mon} ${year} · ${pad(hours)}:${pad(d.getMinutes())}${ampm}`;
+          }
+        %>
+        <div class="pixel-list">
+          <% pixels.forEach(pixel => {
+            const trackerUrl = baseUrl + '/tracker/' + pixel.id + '.png';
+            const htmlSnippet = '<img src="' + trackerUrl + '" width="1" height="1" style="display:none" />';
+          %>
+            <div class="pixel-item">
+              <div class="pixel-info">
+                <div class="pixel-name">
+                  <%= pixel.name %>
+                  <% if (pixel.openCount > 0) { %>
+                    <span class="badge badge-opens"><%= pixel.openCount %> open<%= pixel.openCount !== 1 ? 's' : '' %></span>
+                  <% } else { %>
+                    <span class="badge badge-zero">0 opens</span>
+                  <% } %>
+                </div>
+                <div class="pixel-meta">
+                  <span>Created <%= formatDate(pixel.createdAt) %></span>
+                </div>
+                <div class="pixel-url-row">
+                  <input type="text" class="pixel-url-input" value="<%= trackerUrl %>" readonly id="url-<%= pixel.id %>" />
+                  <button class="btn-icon" onclick="copyToClipboard('url-<%= pixel.id %>', 'URL copied!')" title="Copy URL">📋</button>
+                </div>
+                <div class="snippet-box">
+                  <code id="snippet-<%= pixel.id %>"><%= htmlSnippet %></code>
+                  <button class="btn-icon" onclick="copyToClipboard('snippet-<%= pixel.id %>', 'HTML snippet copied!')" title="Copy HTML">📋</button>
+                </div>
+              </div>
+              <div class="pixel-actions">
+                <a href="/logs/<%= pixel.id %>" class="btn btn-secondary btn-sm">View Logs</a>
+                <form action="/delete/<%= pixel.id %>" method="POST" style="margin:0" onsubmit="return confirm('Delete this pixel and all its logs?')">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </div>
+            </div>
+          <% }) %>
+        </div>
       <% } %>
 
-      <hr />
-
-      <h3>How to Use This Pixel in Gmail</h3>
-      <ol>
-        <li>Copy the <strong>Tracker URL</strong> from above.</li>
-        <li>In Gmail, click <strong>Compose</strong> → <strong>Insert photo</strong> → <strong>By URL</strong>.</li>
-        <li>Paste the URL (e.g. <%= baseUrl %>/tracker/xxxxx.png).</li>
-        <li>(If the preview fails, send the email anyway—Gmail often still loads it when opened.)</li>
-      </ol>
+      <div class="card" style="margin-top: 1.5rem">
+        <div class="card-title">How to Use</div>
+        <div class="howto">
+          <ol>
+            <li><strong>Create a pixel</strong> above and give it a name you'll recognize.</li>
+            <li><strong>Copy the HTML snippet</strong> and paste it at the bottom of your email body.</li>
+            <li>Or in Gmail: <strong>Insert photo → By URL</strong> and paste the tracker URL.</li>
+            <li><strong>View Logs</strong> to see who opened your email, when, and from where.</li>
+          </ol>
+        </div>
+      </div>
     </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+      function copyToClipboard(elementId, message) {
+        const element = document.getElementById(elementId);
+        const text = element.value || element.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(message);
+        });
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = '✓ ' + message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      }
+    </script>
   </body>
 </html>

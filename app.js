@@ -44,9 +44,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// 3) Dashboard route: list pixels
+// 3) Dashboard route: list pixels with open counts
 app.get('/', (req, res) => {
-  const query = 'SELECT * FROM pixels ORDER BY createdAt DESC';
+  const query = `
+    SELECT p.*, COUNT(l.id) AS openCount
+    FROM pixels p
+    LEFT JOIN logs l ON p.id = l.pixelId
+    GROUP BY p.id
+    ORDER BY p.createdAt DESC
+  `;
   db.all(query, [], (err, pixels) => {
     if (err) {
       return res.status(500).send('Error querying pixels.');
@@ -127,12 +133,31 @@ app.get('/logs/:id', (req, res) => {
         console.error('Error retrieving logs:', logsErr);
         return res.status(500).send('Error retrieving logs.');
       }
-      res.render('logs', { pixel, logs });
+
+      const uniqueIps = new Set(logs.map(l => l.ip)).size;
+      res.render('logs', { pixel, logs, uniqueIps });
     });
   });
 });
 
-// 7) Start server
+// 7) Delete a pixel and its logs
+app.post('/delete/:id', (req, res) => {
+  const pixelId = req.params.id;
+  db.run('DELETE FROM logs WHERE pixelId = ?', [pixelId], (err) => {
+    if (err) {
+      console.error('Error deleting logs:', err);
+    }
+    db.run('DELETE FROM pixels WHERE id = ?', [pixelId], (delErr) => {
+      if (delErr) {
+        console.error('Error deleting pixel:', delErr);
+        return res.status(500).send('Error deleting pixel.');
+      }
+      res.redirect('/');
+    });
+  });
+});
+
+// 8) Start server
 const PORT = process.env.PORT || 3300;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
